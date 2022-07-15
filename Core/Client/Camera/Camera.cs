@@ -11,45 +11,28 @@ namespace Onvif.Core.Client.Camera
 {
     public class Camera
     {
-        private static IDictionary<string, Camera> Cameras { get; } = new Dictionary<string, Camera>();
-        public static Camera Create(Account account, Action<Exception> exception)
+        public async Task<Camera> Create(Account account,
+            Action<Exception> exception,
+            CancellationToken cancellationToken = default)
         {
-            var key = $"{account.Host}:{account.UserName}:{account.Password}";
-            Camera camera;
-            bool usable;
+            var camera = new Camera(account);
 
-            if (!Cameras.ContainsKey(key))
-            {
-                camera = new Camera(account);
-                usable = camera.Testing(account, exception).Result;
-                if (usable)
-                {
-                    Cameras.Add(key, camera);
-                    Cameras[key].LastUse = System.DateTime.UtcNow;
-                    //clear...
-                }
-                else
-                    return null;
-            }
+            var usable = await Testing(exception, cancellationToken);
 
-            camera = Cameras[key]; ;
-           
-            usable = camera.Testing(account, exception).Result;
-          
             return usable ? camera : null;
         }
 
         public AutoFocusMode FocusMode { get; set; }
 
-        public System.DateTime LastUse { get; set; }
-
+        public System.DateTime LastUsed { get; set; }
+        
         private Account Account { get; }
         public Camera(Account account)
         {
             Account = account;
         }
 
-        public async Task<bool> Testing(Account account, Action<Exception> exception)
+        private async Task<bool> Testing(Account account, Action<Exception> exception)
         {
             try
             {
@@ -64,7 +47,7 @@ namespace Onvif.Core.Client.Camera
             }
         }
 
-        public async Task<bool> Testing(Action<Exception> exception, CancellationToken cancellationToken = default)
+        private async Task<bool> Testing(Action<Exception> exception, CancellationToken cancellationToken = default)
         {
             try
             {
