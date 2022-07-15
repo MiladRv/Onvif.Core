@@ -11,7 +11,7 @@ namespace Onvif.Core.Client.Camera
 {
     public class Camera
     {
-        private static IDictionary<string, Camera> Cameras { get; set; } = new Dictionary<string, Camera>();
+        private static IDictionary<string, Camera> Cameras { get; } = new Dictionary<string, Camera>();
         public static Camera Create(Account account, Action<Exception> exception)
         {
             var key = $"{account.Host}:{account.UserName}:{account.Password}";
@@ -33,11 +33,10 @@ namespace Onvif.Core.Client.Camera
             }
 
             camera = Cameras[key]; ;
+           
             usable = camera.Testing(account, exception).Result;
-            if (usable)
-                return camera;
-            else
-                return null;
+          
+            return usable ? camera : null;
         }
 
         public AutoFocusMode FocusMode { get; set; }
@@ -86,63 +85,63 @@ namespace Onvif.Core.Client.Camera
         }
 
 
-        private PTZClient _ptz;
+        private PTZClient ptz;
         public PTZClient Ptz
         {
             get
             {
-                _ptz = _ptz ?? OnvifClientFactory.CreatePTZClientAsync(Account.Host, Account.UserName, Account.Password).Result;
-                return _ptz;
+                ptz ??= OnvifClientFactory.CreatePTZClientAsync(Account.Host, Account.UserName, Account.Password).Result;
+                return ptz;
             }
         }
 
 
-        private MediaClient _media;
+        private MediaClient media;
         public MediaClient Media
         {
             get
             {
-                _media = _media ?? OnvifClientFactory.CreateMediaClientAsync(Account.Host, Account.UserName, Account.Password).Result;
-                return _media;
+                media ??= OnvifClientFactory.CreateMediaClientAsync(Account.Host, Account.UserName, Account.Password).Result;
+                return media;
             }
         }
 
 
-        private ImagingClient _imaging;
+        private ImagingClient imaging;
         public ImagingClient Imaging
         {
             get
             {
-                _imaging = _imaging ?? OnvifClientFactory.CreateImagingClientAsync(Account.Host, Account.UserName, Account.Password).Result;
-                return _imaging;
+                imaging ??= OnvifClientFactory.CreateImagingClientAsync(Account.Host, Account.UserName, Account.Password).Result;
+                return imaging;
             }
         }
 
-        private Profile _profile;
+        private Profile profile;
         public Profile Profile
         {
             get
             {
-                if (_profile == null)
-                {
-                    var response = Media.GetProfilesAsync().Result;
-                    _profile = response.Profiles[0];
-                }
-                return _profile;
+                if (profile != null)
+                    return profile;
+
+                var response = Media.GetProfilesAsync().Result;
+                profile = response.Profiles[0];
+                return profile;
             }
         }
 
-        private VideoSource _videoSource;
+        private VideoSource videoSource;
         public VideoSource VideoSource
         {
             get
             {
-                if (_videoSource == null)
-                {
-                    var response = Media.GetVideoSourcesAsync().Result;
-                    _videoSource = response.VideoSources[0];
-                }
-                return _videoSource;
+                if (videoSource != null)
+                    return videoSource;
+
+                var response = Media.GetVideoSourcesAsync().Result;
+                videoSource = response.VideoSources[0];
+                return videoSource;
             }
         }
 

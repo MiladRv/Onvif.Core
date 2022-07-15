@@ -5,61 +5,63 @@ namespace Onvif.Core.Client.Camera
 {
     public static class CameraExtensions
     {
-        public static async Task<bool> FocusAsync(this Client.Camera.Camera camera, FocusMove focusMove)
+        public static async Task<bool> FocusAsync(this Camera camera, FocusMove focusMove)
         {
-            if (camera != null)
+            if (camera == null)
+                return false;
+
+            var imaging = camera.Imaging;
+            var focus = camera.VideoSource.Imaging.Focus != null;
+            var videoSourceToken = camera.VideoSource.token;
+
+            const AutoFocusMode focusMode = AutoFocusMode.MANUAL;
+
+            if (focus)// && camera.FocusMode != focusMode
             {
-                var imaging = camera.Imaging;
-                var focus = camera.VideoSource.Imaging.Focus != null;
-                var vsource_token = camera.VideoSource.token;
-                var focusMode = AutoFocusMode.MANUAL;
-
-                if (focus)// && camera.FocusMode != focusMode
+                var imageSettings = await imaging.GetImagingSettingsAsync(videoSourceToken);
+                if (imageSettings.Focus == null)
                 {
-                    var image_settings = await imaging.GetImagingSettingsAsync(vsource_token);
-                    if (image_settings.Focus == null)
+                    imageSettings.Focus = new FocusConfiguration20
                     {
-                        image_settings.Focus = new FocusConfiguration20
-                        {
-                            AutoFocusMode = focusMode
-                        };
+                        AutoFocusMode = focusMode
+                    };
 
-                        await imaging.SetImagingSettingsAsync(vsource_token, image_settings, false);
-                    }
-                    else if (image_settings.Focus.AutoFocusMode != focusMode)
-                    {
-                        image_settings.Focus.AutoFocusMode = focusMode;
-                        await imaging.SetImagingSettingsAsync(vsource_token, image_settings, false);
-                    }
-                    camera.FocusMode = focusMode;
+                    await imaging.SetImagingSettingsAsync(videoSourceToken, imageSettings, false);
                 }
-
-                await imaging.MoveAsync(vsource_token, focusMove);
-                return true;
+                else if (imageSettings.Focus.AutoFocusMode != focusMode)
+                {
+                    imageSettings.Focus.AutoFocusMode = focusMode;
+                    await imaging.SetImagingSettingsAsync(videoSourceToken, imageSettings, false);
+                }
+                camera.FocusMode = focusMode;
             }
-            return false;
+
+            await imaging.MoveAsync(videoSourceToken, focusMove);
+            return true;
         }
 
-        public static async Task<bool> MoveAsync(this Client.Camera.Camera camera, MoveType moveType, PTZVector vector, PTZSpeed speed, int timeout)
+        public static async Task<bool> MoveAsync(this Camera camera, MoveType moveType, PTZVector vector, PTZSpeed speed, int timeout)
         {
-            if (camera != null)
+            if (camera == null) 
+                return false;
+
+            var ptz = camera.Ptz;
+
+            var profileToken = camera.Profile.token;
+              
+            switch (moveType)
             {
-                var ptz = camera.Ptz;
-                var profile_token = camera.Profile.token;
-                switch (moveType)
-                {
-                    case MoveType.Absolute:
-                        await ptz.AbsoluteMoveAsync(profile_token, vector, speed);
-                        return true;
-                    case MoveType.Relative:
-                        await ptz.RelativeMoveAsync(profile_token, vector, speed);
-                        return true;
-                    case MoveType.Continuous:
-                        await ptz.ContinuousMoveAsync(profile_token, speed, timeout.ToString());
-                        return true;
-                    default:
-                        break;
-                }
+                case MoveType.Absolute:
+                    await ptz.AbsoluteMoveAsync(profileToken, vector, speed);
+                    return true;
+                case MoveType.Relative:
+                    await ptz.RelativeMoveAsync(profileToken, vector, speed);
+                    return true;
+                case MoveType.Continuous:
+                    await ptz.ContinuousMoveAsync(profileToken, speed, timeout.ToString());
+                    return true;
+                default:
+                    break;
             }
             return false;
         }
